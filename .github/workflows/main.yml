@@ -1,0 +1,48 @@
+name: Build RustDesk
+
+on:
+  push:
+    branches: [ "main" ]  # 触发构建的分支
+    paths-ignore:
+      - '**.md'  # 忽略markdown文档变更
+  pull_request:
+    branches: [ "main" ]
+    paths-ignore:
+      - '**.md' # 忽略markdown文档变更
+
+env:
+  CARGO_TERM_COLOR: always #cargo工具颜色
+
+jobs:
+  build:
+    runs-on: ubuntu-latest # 运行在ubuntu最新版
+
+    steps:
+      - uses: actions/checkout@v3 # 使用actions检出代码
+
+      - name: Install dependencies # 安装依赖
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            build-essential libssl-dev clang cmake libgtk-3-dev \
+            pkg-config libx11-dev libxkbfile-dev
+
+      - name: Build # 构建
+        run: |
+          # 构建命令，通过环境变量传递 ID 服务器和密钥
+          cargo build --release --no-default-features --features "rustls"
+          # 移动编译后的文件到指定目录并重命名
+          mkdir -p build
+          cp target/release/rustdesk build/rustdesk
+
+          # 打印环境变量值，用于调试
+          echo "RUSTDESK_ID_SERVER: ${{ secrets.RUSTDESK_ID_SERVER }}"
+          echo "RUSTDESK_RELAY_SERVER: ${{ secrets.RUSTDESK_RELAY_SERVER }}"
+          echo "RUSTDESK_API_SERVER: ${{ secrets.RUSTDESK_API_SERVER }}"
+          echo "RUSTDESK_KEY: ${{ secrets.RUSTDESK_KEY }}"
+
+      - name: Upload artifacts # 上传编译产物
+        uses: actions/upload-artifact@v3
+        with:
+          name: rustdesk-linux
+          path: build/rustdesk
